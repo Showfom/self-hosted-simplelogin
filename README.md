@@ -509,7 +509,7 @@ Then restart the web app to apply: `docker compose restart app`
 SL_VERSION=4.6.5-beta
 ```
 
-- Check [migration commands](https://github.com/simple-login/app/blob/master/docs/upgrade.md)
+- Check and apply [migration commands](https://github.com/simple-login/app/blob/master/docs/upgrade.md)
 
 For instance, to upgrade from `3.4.0` to `4.6.x-beta`, the following change must be done in `simplelogin-compose.yaml`:
 
@@ -526,8 +526,50 @@ For instance, to upgrade from `3.4.0` to `4.6.x-beta`, the following change must
     env_file: .env
 ```
 
+The following changes must be done in `pgsql-transport-maps.cf`:
+
+```patch
+  dbname = simplelogin
+  
+  query = SELECT 'smtp:127.0.0.1:20381' FROM custom_domain WHERE domain = '%s' AND verified=true
++     UNION SELECT 'smtp:127.0.0.1:20381' FROM public_domain WHERE domain = '%s'
+      UNION SELECT 'smtp:127.0.0.1:20381' WHERE '%s' = 'mydomain.com' LIMIT 1;
+```
+
+The following changes must be done in `pgsql-relay-maps.cf`:
+
+```patch
+  dbname = simplelogin
+  
+  query = SELECT domain FROM custom_domain WHERE domain = '%s' AND verified=true
++     UNION SELECT domain FROM public_domain WHERE domain = '%s'
+      UNION SELECT '%s' WHERE '%s' = 'mydomain.com' LIMIT 1;
+```
+
+Finally, the following command must be run in the database:
+
+```
+docker exec -it sl-db psql -U myuser simplelogin
+> UPDATE email_log SET alias_id=(SELECT alias_id FROM contact WHERE contact.id = email_log.contact_id);
+> \q
+```
+
+
 - Restart containers
 
 ```sh
 ./down.sh && ./up.sh
 ```
+
+
+After successfully upgrading to `v4.6.x-beta` you might want to upgrade
+to the latest stable version. Change the `SL_IMAGE` and `SL_VERSION`
+variables from the `.env` file:
+
+```
+SL_VERSION=v4.36.6
+SL_IMAGE=app-ci
+```
+
+And restart the containers.
+
