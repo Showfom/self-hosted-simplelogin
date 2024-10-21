@@ -505,7 +505,7 @@ DISABLE_ONBOARDING=true
 
 Then restart the web app to apply: `docker compose restart app`
 
-## How-to Upgrade
+## How-to Upgrade from 3.4.0
 
 - Change the image version in `.env`
 
